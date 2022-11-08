@@ -1,6 +1,6 @@
 ﻿{
 	"name": "AugmentedHoldout",
-	"version_number": "1.0.0",
+	"version_number": "1.0.1",
 	"website_url": "",
 	"description": "Makes Holdout Zones more fun. Configurable.",
 	"dependencies": [
