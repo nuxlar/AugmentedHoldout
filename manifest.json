@@ -1,0 +1,10 @@
+﻿{
+	"name": "AugmentedHoldout",
+	"version_number": "1.0.0",
+	"website_url": "",
+	"description": "Makes Holdout Zones more fun. Configurable.",
+	"dependencies": [
+		"bbepis-BepInExPack-5.4.2102",
+		"RiskofThunder-HookGenPatcher-1.2.3"
+	]
+}
