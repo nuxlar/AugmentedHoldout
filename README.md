@@ -29,6 +29,11 @@ Moon Escape Holdout:
 
 ## Changelog
 
+**1.0.2**
+
+- Makes Ship Escape enemies team void
+- Immediately spawns 2 Jailers and a Devastator on Ship Escape since spawns are slower
+
 **1.0.1**
 
 - Replaces Lunar Chimera on Escape with all Void enemies

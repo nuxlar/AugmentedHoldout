@@ -2,11 +2,12 @@ using BepInEx;
 using BepInEx.Configuration;
 using RoR2;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
 
 namespace AugmentedHoldout
 {
-  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.1")]
+  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.2")]
 
   public class AugmentedHoldout : BaseUnityPlugin
   {
@@ -18,10 +19,12 @@ namespace AugmentedHoldout
     // Monster credit manipulators { Min, Max }
     private readonly float[] monsterCreditBase = { 15, 40 };
     private readonly float[] monsterCreditInterval = { 10, 20 };
-    private readonly float[] rerollSpawnInterval = { 2.25f, 4.5f };
+    private readonly float[] rerollSpawnInterval = { 2.333f, 4.333f };
     // Timers
     private float monsterCreditTimer = 0;
     // SpawnCards
+    SpawnCard jailer = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidJailer/cscVoidJailer.asset").WaitForCompletion();
+    SpawnCard devastator = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidMegaCrab/cscVoidMegaCrab.asset").WaitForCompletion();
     DirectorCardCategorySelection dccsVoidStageMonsters = Addressables.LoadAssetAsync<DirectorCardCategorySelection>("RoR2/DLC1/voidstage/dccsVoidStageMonsters.asset").WaitForCompletion();
 
     public void Awake()
@@ -41,7 +44,24 @@ namespace AugmentedHoldout
       orig(self);
       tpStarted = true;
       if (self.inBoundsObjectiveToken == "OBJECTIVE_MOON_CHARGE_DROPSHIP")
+      {
         shipStarted = true;
+        // Spawn a Devastator and 2 Jailers because spawning seems to be slow
+        DirectorPlacementRule placementRule = new DirectorPlacementRule();
+        placementRule.placementMode = DirectorPlacementRule.PlacementMode.Approximate;
+        DirectorSpawnRequest directorSpawnRequest = new DirectorSpawnRequest(jailer, placementRule, Run.instance.runRNG);
+        directorSpawnRequest.teamIndexOverride = new TeamIndex?(TeamIndex.Void);
+        DirectorPlacementRule placementRule2 = new DirectorPlacementRule();
+        placementRule2.placementMode = DirectorPlacementRule.PlacementMode.Approximate;
+        DirectorSpawnRequest directorSpawnRequest2 = new DirectorSpawnRequest(jailer, placementRule, Run.instance.runRNG);
+        directorSpawnRequest2.teamIndexOverride = new TeamIndex?(TeamIndex.Void);
+        GameObject spawnedDevastator = devastator.DoSpawn(new Vector3(369, -174, 446), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+        GameObject spawnedJailer1 = jailer.DoSpawn(new Vector3(254, -171.5f, 433), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+        GameObject spawnedJailer2 = jailer.DoSpawn(new Vector3(296, -172, 321), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+        NetworkServer.Spawn(spawnedDevastator);
+        NetworkServer.Spawn(spawnedJailer1);
+        NetworkServer.Spawn(spawnedJailer2);
+      }
       //"Teleporter1(Clone)" "LunarTeleporter Variant(Clone)"
       // moon pillar MoonBatteryDesign MoonBatteryBlood MoonBatterySoul MoonBatteryMass (some number)
     }
@@ -76,7 +96,10 @@ namespace AugmentedHoldout
       {
 
         if (shipStarted)
+        {
           self.monsterCards = dccsVoidStageMonsters;
+          self.teamIndex = TeamIndex.Void;
+        }
 
         // Update interval
         monsterCreditTimer -= deltaTime;
