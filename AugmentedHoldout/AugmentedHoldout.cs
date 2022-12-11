@@ -8,12 +8,11 @@ using System.Collections.Generic;
 
 namespace AugmentedHoldout
 {
-  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.3")]
+  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.4")]
 
   public class AugmentedHoldout : BaseUnityPlugin
   {
     public ConfigEntry<float> creditMultiplier;
-    public ConfigEntry<bool> enableDuringEclipse;
     public static ConfigFile RoRConfig { get; set; }
     private bool tpStarted = false;
     private bool shipStarted = false;
@@ -32,12 +31,10 @@ namespace AugmentedHoldout
     {
       RoRConfig = new ConfigFile(Paths.ConfigPath + "\\com.Nuxlar.AugmentedHoldout.cfg", true);
       creditMultiplier = RoRConfig.Bind("General", "Credit Multiplier", 1.25f, "A multiplier for the rate at which more difficult monsters spawn; 1 is the default rate.");
-      enableDuringEclipse = RoRConfig.Bind("General", "TeleExpand Eclipse", false, "Should the teleporter expand after defeating the boss in Eclipse?");
       On.RoR2.HoldoutZoneController.Start += HoldoutZoneControllerStart;
       On.RoR2.HoldoutZoneController.OnDisable += HoldoutZoneControllerOnDisable;
       On.RoR2.CombatDirector.FixedUpdate += CombatDirectorFixedUpdate;
       On.RoR2.CombatDirector.Simulate += CombatDirectorSimulate;
-      On.RoR2.TeleporterInteraction.UpdateMonstersClear += TeleporterInteractionUpdateMonstersClear;
       // Moon
       On.EntityStates.MoonElevator.MoonElevatorBaseState.OnEnter += MoonElevatorBaseStateOnEnter;
       On.RoR2.MoonBatteryMissionController.OnBatteryCharged += OnPillarCharged;
@@ -169,7 +166,6 @@ namespace AugmentedHoldout
         // Update credit for faster spawns
         if (monsterCreditTimer < 0)
         {
-
           // Spawn boost min max
           float minBaseCredit = monsterCreditBase[0];
           float maxBaseCredit = monsterCreditBase[1] + ((Run.instance.stageClearCount + 1) * creditMultiplier.Value);
@@ -185,22 +181,6 @@ namespace AugmentedHoldout
         }
       }
       orig(self, deltaTime);
-    }
-    private void TeleporterInteractionUpdateMonstersClear(On.RoR2.TeleporterInteraction.orig_UpdateMonstersClear orig, RoR2.TeleporterInteraction self)
-    {
-      orig(self);
-      // Minimum charge of 5% to prevent it from instantly expanding when the tele starts before boss is spawned
-      if (self.monstersCleared && self.holdoutZoneController && self.activationState == TeleporterInteraction.ActivationState.Charging && self.chargeFraction > 0.05f)
-      {
-        bool eclipseEnabled = Run.instance.selectedDifficulty >= DifficultyIndex.Eclipse2;
-        if (enableDuringEclipse.Value || !eclipseEnabled)
-        {
-          if (Util.GetItemCountForTeam(self.holdoutZoneController.chargingTeam, RoR2Content.Items.FocusConvergence.itemIndex, true, true) <= 0)
-          {
-            self.holdoutZoneController.currentRadius = 1000000f;
-          }
-        }
-      }
     }
 
     private static PickupIndex SelectPearl()
