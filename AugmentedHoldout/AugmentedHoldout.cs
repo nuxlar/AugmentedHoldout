@@ -4,10 +4,11 @@ using RoR2;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.AddressableAssets;
+using System.Collections.Generic;
 
 namespace AugmentedHoldout
 {
-  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.2")]
+  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.3")]
 
   public class AugmentedHoldout : BaseUnityPlugin
   {
@@ -37,6 +38,64 @@ namespace AugmentedHoldout
       On.RoR2.CombatDirector.FixedUpdate += CombatDirectorFixedUpdate;
       On.RoR2.CombatDirector.Simulate += CombatDirectorSimulate;
       On.RoR2.TeleporterInteraction.UpdateMonstersClear += TeleporterInteractionUpdateMonstersClear;
+      // Moon
+      On.EntityStates.MoonElevator.MoonElevatorBaseState.OnEnter += MoonElevatorBaseStateOnEnter;
+      On.RoR2.MoonBatteryMissionController.OnBatteryCharged += OnPillarCharged;
+    }
+
+    private void MoonElevatorBaseStateOnEnter(On.EntityStates.MoonElevator.MoonElevatorBaseState.orig_OnEnter orig, EntityStates.MoonElevator.MoonElevatorBaseState self)
+    {
+      orig(self);
+      self.outer.SetNextState(new EntityStates.MoonElevator.Ready());
+    }
+
+    private void OnPillarCharged(On.RoR2.MoonBatteryMissionController.orig_OnBatteryCharged orig, RoR2.MoonBatteryMissionController self, HoldoutZoneController holdoutZone)
+    {
+      orig(self, holdoutZone);
+      if (NetworkServer.active)
+      {
+        Vector3 rewardPositionOffset = new Vector3(0f, 3f, 0f);
+        float pearlOverwriteChance = 15f;
+
+        PickupIndex pickupIndex = SelectItem();
+        ItemTier tier = PickupCatalog.GetPickupDef(pickupIndex).itemTier;
+        if (pickupIndex != PickupIndex.none)
+        {
+
+          PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
+
+          int participatingPlayerCount = Run.instance.participatingPlayerCount;
+          if (participatingPlayerCount != 0 && holdoutZone.transform)
+          {
+            int num = participatingPlayerCount;
+
+            float angle = 360f / (float)num;
+            Vector3 vector = Quaternion.AngleAxis((float)UnityEngine.Random.Range(0, 360), Vector3.up) * (Vector3.up * 40f + Vector3.forward * 5f);
+            Quaternion rotation = Quaternion.AngleAxis(angle, Vector3.up);
+
+            int k = 0;
+            while (k < num)
+            {
+              PickupIndex pickupOverwrite = PickupIndex.none;
+              bool overwritePickup = false;
+              if (tier != ItemTier.Tier3)
+              {
+                float pearlChance = pearlOverwriteChance;
+                float total = pearlChance;
+                if (Run.instance.bossRewardRng.RangeFloat(0f, 100f) < pearlChance)
+                {
+                  pickupOverwrite = SelectPearl();
+                }
+
+                overwritePickup = !(pickupOverwrite == PickupIndex.none);
+              }
+              PickupDropletController.CreatePickupDroplet(overwritePickup ? pickupOverwrite : pickupIndex, holdoutZone.transform.position + rewardPositionOffset, vector);
+              k++;
+              vector = rotation * vector;
+            }
+          }
+        }
+      }
     }
 
     private void HoldoutZoneControllerStart(On.RoR2.HoldoutZoneController.orig_Start orig, RoR2.HoldoutZoneController self)
@@ -51,16 +110,19 @@ namespace AugmentedHoldout
         placementRule.placementMode = DirectorPlacementRule.PlacementMode.Approximate;
         DirectorSpawnRequest directorSpawnRequest = new DirectorSpawnRequest(jailer, placementRule, Run.instance.runRNG);
         directorSpawnRequest.teamIndexOverride = new TeamIndex?(TeamIndex.Void);
+
         DirectorPlacementRule placementRule2 = new DirectorPlacementRule();
         placementRule2.placementMode = DirectorPlacementRule.PlacementMode.Approximate;
-        DirectorSpawnRequest directorSpawnRequest2 = new DirectorSpawnRequest(jailer, placementRule, Run.instance.runRNG);
+        DirectorSpawnRequest directorSpawnRequest2 = new DirectorSpawnRequest(devastator, placementRule, Run.instance.runRNG);
         directorSpawnRequest2.teamIndexOverride = new TeamIndex?(TeamIndex.Void);
-        GameObject spawnedDevastator = devastator.DoSpawn(new Vector3(369, -174, 446), Quaternion.identity, directorSpawnRequest).spawnedInstance;
-        GameObject spawnedJailer1 = jailer.DoSpawn(new Vector3(254, -171.5f, 433), Quaternion.identity, directorSpawnRequest).spawnedInstance;
-        GameObject spawnedJailer2 = jailer.DoSpawn(new Vector3(296, -172, 321), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+
+        GameObject spawnedDevastator = devastator.DoSpawn(new Vector3(369, -174, 446), Quaternion.identity, directorSpawnRequest2).spawnedInstance;
+        GameObject spawnedJailer = jailer.DoSpawn(new Vector3(254, -171.5f, 433), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+        // GameObject spawnedJailer2 = jailer.DoSpawn(new Vector3(296, -172, 321), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+
         NetworkServer.Spawn(spawnedDevastator);
-        NetworkServer.Spawn(spawnedJailer1);
-        NetworkServer.Spawn(spawnedJailer2);
+        NetworkServer.Spawn(spawnedJailer);
+        //NetworkServer.Spawn(spawnedJailer2);
       }
       //"Teleporter1(Clone)" "LunarTeleporter Variant(Clone)"
       // moon pillar MoonBatteryDesign MoonBatteryBlood MoonBatterySoul MoonBatteryMass (some number)
@@ -127,7 +189,7 @@ namespace AugmentedHoldout
     private void TeleporterInteractionUpdateMonstersClear(On.RoR2.TeleporterInteraction.orig_UpdateMonstersClear orig, RoR2.TeleporterInteraction self)
     {
       orig(self);
-      //Minimum charge of 5% to prevent it from instantly expanding when the tele starts before boss is spawned
+      // Minimum charge of 5% to prevent it from instantly expanding when the tele starts before boss is spawned
       if (self.monstersCleared && self.holdoutZoneController && self.activationState == TeleporterInteraction.ActivationState.Charging && self.chargeFraction > 0.05f)
       {
         bool eclipseEnabled = Run.instance.selectedDifficulty >= DifficultyIndex.Eclipse2;
@@ -139,6 +201,82 @@ namespace AugmentedHoldout
           }
         }
       }
+    }
+
+    private static PickupIndex SelectPearl()
+    {
+      PickupIndex pearlIndex = PickupCatalog.FindPickupIndex(RoR2Content.Items.Pearl.itemIndex);
+      PickupIndex shinyPearlIndex = PickupCatalog.FindPickupIndex(RoR2Content.Items.ShinyPearl.itemIndex);
+      bool pearlAvailable = pearlIndex != PickupIndex.none && Run.instance.IsItemAvailable(RoR2Content.Items.Pearl.itemIndex);
+      bool shinyPearlAvailable = shinyPearlIndex != PickupIndex.none && Run.instance.IsItemAvailable(RoR2Content.Items.ShinyPearl.itemIndex);
+
+      PickupIndex toReturn = PickupIndex.none;
+      if (pearlAvailable && shinyPearlAvailable)
+      {
+        toReturn = pearlIndex;
+        if (Run.instance.bossRewardRng.RangeFloat(0f, 100f) <= 20f)
+        {
+          toReturn = shinyPearlIndex;
+        }
+      }
+      else
+      {
+        if (pearlAvailable)
+        {
+          toReturn = pearlIndex;
+        }
+        else if (shinyPearlAvailable)
+        {
+          toReturn = shinyPearlIndex;
+        }
+      }
+      return toReturn;
+    }
+
+    //Yellow Chance is handled after selecting item
+    private static PickupIndex SelectItem()
+    {
+      float whiteChance = 50f;
+      float greenChance = 40f;
+      float redChance = 10f;
+      float lunarChance = 0f;
+
+      List<PickupIndex> list;
+      Xoroshiro128Plus bossRewardRng = Run.instance.bossRewardRng;
+      PickupIndex selectedPickup = PickupIndex.none;
+
+      float total = whiteChance + greenChance + redChance + lunarChance;
+
+      if (bossRewardRng.RangeFloat(0f, total) <= whiteChance)//drop white
+      {
+        list = Run.instance.availableTier1DropList;
+      }
+      else
+      {
+        total -= whiteChance;
+        if (bossRewardRng.RangeFloat(0f, total) <= greenChance)//drop green
+        {
+          list = Run.instance.availableTier2DropList;
+        }
+        else
+        {
+          total -= greenChance;
+          if ((bossRewardRng.RangeFloat(0f, total) <= redChance))
+          {
+            list = Run.instance.availableTier3DropList;
+          }
+          else
+          {
+            list = Run.instance.availableLunarCombinedDropList;
+          }
+
+        }
+      }
+      if (list.Count > 0)
+      {
+        selectedPickup = bossRewardRng.NextElementUniform<PickupIndex>(list);
+      }
+      return selectedPickup;
     }
   }
 }
