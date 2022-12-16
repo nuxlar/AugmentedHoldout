@@ -1,7 +1,7 @@
 ﻿{
 	"name": "AugmentedHoldout",
 	"version_number": "1.0.5",
-	"website_url": "",
+	"website_url": "https://github.com/nuxlar/AugmentedHoldout",
 	"description": "Increases spawn rate and credits for holdout zones. Configurable",
 	"dependencies": [
 		"bbepis-BepInExPack-5.4.2102",
