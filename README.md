@@ -3,7 +3,7 @@
 This mod increases spawn rate and available credits during all holdout events. Credit multiplier is configurable.
 
 All Holdouts:
-  - Increased monster spawn rate
+  - Increased monster spawn rate (increased even more for non-Eclipse difficulties)
   - Increased credits for spawning (+25% default configurable)
 
 Moon Edit:
@@ -15,6 +15,9 @@ Moon Escape Holdout:
   - Adds all void enemies to spawn pool (no voidling)
   - Spawns a Jailer and Devastator to start off (accounts for slower spawning)
 
+Void Locus Edit:
+  - Removes Void Fog from charging
+
 ## Credits
 
 **drizzlx** Used the spawn rate multiplier from [SacrificeRemix](https://thunderstore.io/package/drizzlx/SacrificeRemix/)
@@ -23,7 +26,13 @@ Moon Escape Holdout:
 
 ## Changelog
 
-**1.0.3**
+**1.0.5**
+
+- Removes void fog when charging void pillars in Void Locus
+- Increases spawn rate for Non-Eclipse difficulties
+- Old spawn rate for Eclipse 2 and Higher
+
+**1.0.4**
 
 - Removes TeleExpansion
 - README edit

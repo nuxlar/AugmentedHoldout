@@ -1,6 +1,6 @@
 ﻿{
 	"name": "AugmentedHoldout",
-	"version_number": "1.0.4",
+	"version_number": "1.0.5",
 	"website_url": "",
 	"description": "Increases spawn rate and credits for holdout zones. Configurable",
 	"dependencies": [

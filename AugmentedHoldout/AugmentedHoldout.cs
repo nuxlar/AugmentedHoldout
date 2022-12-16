@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace AugmentedHoldout
 {
-  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.4")]
+  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.5")]
 
   public class AugmentedHoldout : BaseUnityPlugin
   {
@@ -19,13 +19,15 @@ namespace AugmentedHoldout
     // Monster credit manipulators { Min, Max }
     private readonly float[] monsterCreditBase = { 15, 40 };
     private readonly float[] monsterCreditInterval = { 10, 20 };
-    private readonly float[] rerollSpawnInterval = { 2.333f, 4.333f };
+    private readonly float[] rerollSpawnIntervalEclipse = { 2.333f, 4.333f };
+    private readonly float[] rerollSpawnIntervalMonsoon = { 0.333f, 2.333f };
     // Timers
     private float monsterCreditTimer = 0;
     // SpawnCards
-    SpawnCard jailer = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidJailer/cscVoidJailer.asset").WaitForCompletion();
-    SpawnCard devastator = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidMegaCrab/cscVoidMegaCrab.asset").WaitForCompletion();
-    DirectorCardCategorySelection dccsVoidStageMonsters = Addressables.LoadAssetAsync<DirectorCardCategorySelection>("RoR2/DLC1/voidstage/dccsVoidStageMonsters.asset").WaitForCompletion();
+    private static SpawnCard jailer = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidJailer/cscVoidJailer.asset").WaitForCompletion();
+    private static SpawnCard devastator = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/VoidMegaCrab/cscVoidMegaCrab.asset").WaitForCompletion();
+    private static DirectorCardCategorySelection dccsVoidStageMonsters = Addressables.LoadAssetAsync<DirectorCardCategorySelection>("RoR2/DLC1/voidstage/dccsVoidStageMonsters.asset").WaitForCompletion();
+    private bool eclipseEnabled;
 
     public void Awake()
     {
@@ -35,9 +37,23 @@ namespace AugmentedHoldout
       On.RoR2.HoldoutZoneController.OnDisable += HoldoutZoneControllerOnDisable;
       On.RoR2.CombatDirector.FixedUpdate += CombatDirectorFixedUpdate;
       On.RoR2.CombatDirector.Simulate += CombatDirectorSimulate;
+      On.RoR2.Run.Start += RunStart;
       // Moon
       On.EntityStates.MoonElevator.MoonElevatorBaseState.OnEnter += MoonElevatorBaseStateOnEnter;
       On.RoR2.MoonBatteryMissionController.OnBatteryCharged += OnPillarCharged;
+      // Void Locus
+      On.RoR2.VoidStageMissionController.RequestFog += RequestFog;
+    }
+
+    private void RunStart(On.RoR2.Run.orig_Start orig, RoR2.Run self)
+    {
+      orig(self);
+      eclipseEnabled = Run.instance.selectedDifficulty >= DifficultyIndex.Eclipse2;
+    }
+
+    private VoidStageMissionController.FogRequest RequestFog(On.RoR2.VoidStageMissionController.orig_RequestFog orig, RoR2.VoidStageMissionController self, IZone zone)
+    {
+      return null;
     }
 
     private void MoonElevatorBaseStateOnEnter(On.EntityStates.MoonElevator.MoonElevatorBaseState.orig_OnEnter orig, EntityStates.MoonElevator.MoonElevatorBaseState self)
@@ -135,10 +151,15 @@ namespace AugmentedHoldout
 
     private void CombatDirectorFixedUpdate(On.RoR2.CombatDirector.orig_FixedUpdate orig, RoR2.CombatDirector self)
     {
-      if (tpStarted)
+      if (tpStarted && eclipseEnabled)
       {
-        self.minRerollSpawnInterval = rerollSpawnInterval[0];
-        self.maxRerollSpawnInterval = rerollSpawnInterval[1];
+        self.minRerollSpawnInterval = rerollSpawnIntervalEclipse[0];
+        self.maxRerollSpawnInterval = rerollSpawnIntervalEclipse[1];
+      }
+      else if (tpStarted)
+      {
+        self.minRerollSpawnInterval = rerollSpawnIntervalMonsoon[0];
+        self.maxRerollSpawnInterval = rerollSpawnIntervalMonsoon[1];
       }
       else
       {
