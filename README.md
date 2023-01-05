@@ -26,6 +26,11 @@ Void Locus Edit:
 
 ## Changelog
 
+**1.0.6**
+
+- Adds configs for Eclipse spawn interval and void pillar fog
+- Brings back Jailer2 (moon escape)
+
 **1.0.5**
 
 - Removes void fog when charging void pillars in Void Locus

@@ -8,11 +8,13 @@ using System.Collections.Generic;
 
 namespace AugmentedHoldout
 {
-  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.5")]
+  [BepInPlugin("com.Nuxlar.AugmentedHoldout", "AugmentedHoldout", "1.0.6")]
 
   public class AugmentedHoldout : BaseUnityPlugin
   {
     public ConfigEntry<float> creditMultiplier;
+    public ConfigEntry<bool> hasEclipseInterval;
+    public ConfigEntry<bool> hasVoidFog;
     public static ConfigFile RoRConfig { get; set; }
     private bool tpStarted = false;
     private bool shipStarted = false;
@@ -33,6 +35,8 @@ namespace AugmentedHoldout
     {
       RoRConfig = new ConfigFile(Paths.ConfigPath + "\\com.Nuxlar.AugmentedHoldout.cfg", true);
       creditMultiplier = RoRConfig.Bind("General", "Credit Multiplier", 1.25f, "A multiplier for the rate at which more difficult monsters spawn; 1 is the default rate.");
+      hasEclipseInterval = RoRConfig.Bind("General", "Eclipse Spawns", true, "Should Eclipse have a more reasonable spawn rate?");
+      hasVoidFog = RoRConfig.Bind("General", "Void Pillar Fog", false, "Should void pillars have void fog?");
       On.RoR2.HoldoutZoneController.Start += HoldoutZoneControllerStart;
       On.RoR2.HoldoutZoneController.OnDisable += HoldoutZoneControllerOnDisable;
       On.RoR2.CombatDirector.FixedUpdate += CombatDirectorFixedUpdate;
@@ -53,7 +57,10 @@ namespace AugmentedHoldout
 
     private VoidStageMissionController.FogRequest RequestFog(On.RoR2.VoidStageMissionController.orig_RequestFog orig, RoR2.VoidStageMissionController self, IZone zone)
     {
-      return null;
+      if (hasVoidFog.Value)
+        return orig(self, zone);
+      else
+        return null;
     }
 
     private void MoonElevatorBaseStateOnEnter(On.EntityStates.MoonElevator.MoonElevatorBaseState.orig_OnEnter orig, EntityStates.MoonElevator.MoonElevatorBaseState self)
@@ -131,11 +138,11 @@ namespace AugmentedHoldout
 
         GameObject spawnedDevastator = devastator.DoSpawn(new Vector3(369, -174, 446), Quaternion.identity, directorSpawnRequest2).spawnedInstance;
         GameObject spawnedJailer = jailer.DoSpawn(new Vector3(254, -171.5f, 433), Quaternion.identity, directorSpawnRequest).spawnedInstance;
-        // GameObject spawnedJailer2 = jailer.DoSpawn(new Vector3(296, -172, 321), Quaternion.identity, directorSpawnRequest).spawnedInstance;
+        GameObject spawnedJailer2 = jailer.DoSpawn(new Vector3(296, -172, 321), Quaternion.identity, directorSpawnRequest).spawnedInstance;
 
         NetworkServer.Spawn(spawnedDevastator);
         NetworkServer.Spawn(spawnedJailer);
-        //NetworkServer.Spawn(spawnedJailer2);
+        NetworkServer.Spawn(spawnedJailer2);
       }
       //"Teleporter1(Clone)" "LunarTeleporter Variant(Clone)"
       // moon pillar MoonBatteryDesign MoonBatteryBlood MoonBatterySoul MoonBatteryMass (some number)
@@ -151,7 +158,7 @@ namespace AugmentedHoldout
 
     private void CombatDirectorFixedUpdate(On.RoR2.CombatDirector.orig_FixedUpdate orig, RoR2.CombatDirector self)
     {
-      if (tpStarted && eclipseEnabled)
+      if (tpStarted && eclipseEnabled && hasEclipseInterval.Value)
       {
         self.minRerollSpawnInterval = rerollSpawnIntervalEclipse[0];
         self.maxRerollSpawnInterval = rerollSpawnIntervalEclipse[1];
